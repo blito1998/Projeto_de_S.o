@@ -1,0 +1,129 @@
+#include <stdio.h>
+#include <stdlib.h>
+#include <time.h>
+
+typedef struct{
+        int tamJobs, idProcess, totJaProcessado;
+		int statusProc, TemE_S, instantes_E_S[50], prioridade, tempoChegadaNaFila, instanteChegadaNaFila; //1 ou mais instantes de E/S 
+		//através do instanteChegadaNaFila pode-se calcular o tempo de ociosidade e de aproveitamento da CPU, interfere na montagem da fila de prioridade, etc
+}TipoUmProcesso;
+
+void criaProcessos(TipoUmProcesso *vetProc);
+void imprimeProcessosCriados(TipoUmProcesso *vetProc);
+void ESCALONADOR(TipoUmProcesso *vetProc);
+void CPU(TipoUmProcesso *vetProc, int qualProcess);
+void FILA_DE_PROCESSOS(TipoUmProcesso *vetProc, int qualProcess);
+
+
+int totProcess, umQuantumDeCPU, tamTotalMemoria; //tamTotalMemoria: pode determinar se um novo processo pode ou não ser criado/ir para a fila
+//umQuantumDeCPU pode punir a eficiência com as trocas e restauração de contexto.
+int main() {
+        int i, c;
+
+        
+        printf("Numero de Processos:");
+        scanf("%d",&totProcess);
+        printf("Determine o tamanho do Quantum:");
+        scanf("%d",&umQuantumDeCPU); //O quantum pode ser por processo e não fixo na CPU, pode ser particionado por usuário, etc
+                                     //pode-se associar um peso ao quantum relacionado a troca de contexto
+        
+        TipoUmProcesso vetProc[totProcess];
+        
+        criaProcessos(vetProc);
+        imprimeProcessosCriados(vetProc); 
+		//nesse ponto, pode-se pensar num estado inicial para a fila antes de chamar o escalonador       		
+        ESCALONADOR(vetProc);   //chamar o escalonador    
+		system("pause");		
+        return 0;
+}
+
+void criaProcessos(TipoUmProcesso *vetProc) {
+	int cont;
+	srand(time(NULL));
+    for (cont = 0; cont < totProcess; cont++) {
+		vetProc[cont].tamJobs = 4+rand()%12;  /*tamanho do job do processo é gerado aleatóriamente*/
+		vetProc[cont].idProcess = 65+cont;
+		vetProc[cont].totJaProcessado = 0;
+    }
+}
+
+
+void imprimeProcessosCriados(TipoUmProcesso *vetProc) {
+        int cont;
+        printf("\tID Processo -> Tamanho do Job \n");
+        for(cont = 0; cont < totProcess; cont++)
+			printf("\t    %c \t    -> \t %d \n",(vetProc[cont].idProcess),vetProc[cont].tamJobs);
+}
+
+
+//ESCALONADOR
+   //chamar a CPU
+       //ao sair da CPU reorganiza ESSE processo na fila   
+//pode-se implementar estratégias para pegar de diferentes filas, eventos que cause a saída de bloqueado para para prontos, entre outras...
+//pode-se implementar mecanismo que coloque novos processos na fila (um novo processo), etc   
+void ESCALONADOR(TipoUmProcesso *vetProcProntos){
+	int processEleito;
+	while (totProcess > 0){
+		processEleito = 0; //pode-se implementar algum método de seleção do processo de acordo com a característica
+		CPU(vetProcProntos, processEleito); //envia o próximo processo para a CPU
+		printf("|");	
+	}
+	
+}
+
+//CPU
+  //executar o processo ate acabar o quantum ou abortar se houver uma interrupção (estratégia)
+void CPU(TipoUmProcesso *vetProcEmExecucao, int qualProcess){
+	int totDoQuantum;
+	for(totDoQuantum = 0; totDoQuantum < umQuantumDeCPU && vetProcEmExecucao[qualProcess].totJaProcessado < vetProcEmExecucao[qualProcess].tamJobs; totDoQuantum++) {
+		printf("%c", vetProcEmExecucao[qualProcess].idProcess);
+		vetProcEmExecucao[qualProcess].totJaProcessado++;
+		//pode-se pensar em estratégias de interrupção (I/O) nesse ponto
+		//nesse caso, com mecanismo para gerenciar a fila de bloqueados e eventos (aleatório, por exemplo)
+		//que faça o processo em algum momento voltar para a fila de prontos
+	}
+	
+	//para onde vai o processo após sair da CPU? se terminou, sai da fila, senão vai para o final, para fila de bloqueados, etc
+	FILA_DE_PROCESSOS(vetProcEmExecucao, qualProcess);	
+}
+
+
+//REARRANJA FILA DE PROCESSOS
+   //organizar a(s) fila(s) de acordo com estratégia/algoritmo
+//ESTRATÉGIAS: mais de uma fila, fila por características, etc
+void FILA_DE_PROCESSOS(TipoUmProcesso *vetProcProntos, int qualProcess){
+	int cont;
+	TipoUmProcesso saiuDaCPU;
+	saiuDaCPU = vetProcProntos[qualProcess];
+	
+	//acabou todo o processo, retira da fila de pendentes
+	if(vetProcProntos[qualProcess].totJaProcessado == vetProcProntos[qualProcess].tamJobs){
+		for(cont = qualProcess; cont < totProcess-1; cont++){
+			vetProcProntos[cont] = vetProcProntos[cont+1];
+		}
+		totProcess--; //faz a fila diminuir até zerar (chegar em 1)
+	}else{//vai para o final da fila (quando mais de uma fila, deve-se implementar para qual fila de acordo com a circustancia)
+		
+		for(cont = qualProcess; cont < totProcess-1; cont++){
+			vetProcProntos[cont] = vetProcProntos[cont+1];
+		}
+		vetProcProntos[cont] = saiuDaCPU;
+	}
+}
+
+
+/* O QUE SE PODE TER COMO RELATÓRIO:
+   *ESTUDAR OS CONCEITOS PARA OBTER AS SEGUINTES MÉTRICAS:
+  	- Tempo de utilização de CPU;
+	- índice de produtividade da CPU;
+	- Tempo médio de espera;
+	- Tempo médio de retorno
+	- Etc
+*/
+
+
+
+
+
+
+
